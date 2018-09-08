@@ -1,13 +1,15 @@
 package com.prem.springcache.config;
 
+import com.prem.springcache.cache.CacheKeyRefMap;
+import com.prem.springcache.service.ProxyService;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.cache.ehcache.EhCacheCacheManager;
 import org.springframework.cache.ehcache.EhCacheManagerFactoryBean;
-import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -15,12 +17,17 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.List;
+import java.io.IOException;
+import java.net.URISyntaxException;
 
 @Configuration
 @EnableScheduling
 public class AppConfig {
+
+	@Autowired
+	ProxyService proxyService;
+
+    Logger logger = LoggerFactory.getLogger(AppConfig.class);
 	
 	@Bean
 	public RestTemplate getRestTemplate() {
@@ -48,13 +55,26 @@ public class AppConfig {
 	@Bean
     CommandLineRunner runner(){
         return args -> {
-            System.out.println("CommandLineRunner running ...");
+            logger.debug("CommandLineRunner running ...");
         };
     }
 
-	@Scheduled(fixedRate=(30*1000)) // 30 sec
+	@Scheduled(fixedRate=(5*60*1000)) // 5 min
 	public void updateCache() {
-		System.out.println("Do Task...");
+		logger.debug("Cache update - started");
+		logger.debug("Cache size: "+CacheKeyRefMap.getCacheEntrySet().size());
+		CacheKeyRefMap.getCacheEntrySet().parallelStream().forEach(es -> {
+		    logger.debug("Updating Cache Key: "+es.getKey());
+			try {
+				proxyService.updateCache(es.getValue());
+				logger.debug("Cache key ["+es.getKey()+"] updated successfully");
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+        logger.debug("Cache update - completed");
 	}
 
 }
