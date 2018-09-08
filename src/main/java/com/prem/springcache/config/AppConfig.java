@@ -11,12 +11,15 @@ import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableScheduling
 public class AppConfig {
 	
 	@Bean
@@ -48,5 +51,10 @@ public class AppConfig {
             System.out.println("CommandLineRunner running ...");
         };
     }
+
+	@Scheduled(fixedRate=(30*1000)) // 30 sec
+	public void updateCache() {
+		System.out.println("Do Task...");
+	}
 
 }

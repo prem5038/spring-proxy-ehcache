@@ -1,5 +1,7 @@
 package com.prem.springcache.controller;
 
+import com.prem.springcache.cache.CacheKeyReference;
+import com.prem.springcache.service.ProxyService;
 import net.sf.ehcache.Ehcache;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.gateway.mvc.ProxyExchange;
 import org.springframework.http.HttpHeaders;
@@ -32,69 +35,25 @@ import java.util.Map;
 @RestController
 public class ProxyController {
 
-    @Value("${remote.server.name}")
-    String remoteServerName;
-
-    @Value("${remote.server.port}")
-    int remoteServerPort;
-
     @Autowired
-    OkHttpClient okHttpClient;
-
-    @Autowired
-    RestTemplate restTemplate;
-
-    @Autowired
-    CacheManager cacheManager;
+    ProxyService proxyService;
 
     Logger logger = LoggerFactory.getLogger(ProxyController.class);
 
 
     @RequestMapping("/**")
-    @Cacheable(value = "primeCache",keyGenerator = "customKeyGen")
-    public String mirrorRest(@RequestBody @Nullable String body,
+    public String processRequest(@RequestBody @Nullable String body,
                              HttpMethod method,
                              HttpServletRequest request,
                              @RequestHeader HttpHeaders headers
     ) throws URISyntaxException, IOException {
 
-        URI uri = new URI("http", null, remoteServerName, remoteServerPort, request.getRequestURI(), request.getQueryString(), null);
-        Map<String, String> reqHeader = new HashMap<>();
-        headers.keySet().forEach(k -> reqHeader.put(k, this.flattenList(headers.get(k))));
-        logger.debug("Cache Miss. Requesting server url: "+uri.toString());
-        Request clientRequest = new Request.Builder()
-                .headers(Headers.of(reqHeader))
-                .url(uri.toString())
-                .build();
-        Response response = okHttpClient.newCall(clientRequest).execute();
-        return response.body().string();
+        return proxyService.getServerResponse(body, method, request, headers);
     }
 
-    @RequestMapping("/cache")
-    public void printCacheContent(){
-        System.out.println("Printing Cache content: ");
-        System.out.println("***********************************************************");
-        Cache cache = cacheManager.getCache("primeCache");
-        Ehcache ehcache = (Ehcache) cache.getNativeCache();
-        List<Object> cacheKeys = ehcache.getKeys();
 
-        cacheKeys.forEach(key -> {
-            System.out.println("Key = " + key.toString()+", Value Length = "+cache.get(key).toString().length());
-        });
-        System.out.println("***********************************************************");
-    }
 
-    @GetMapping("/proxy/path/**")
-    public ResponseEntity<?> proxyPath(ProxyExchange<?> proxy) throws Exception {
-        String path = proxy.path("/proxy/path/");
-        return proxy.uri(remoteServerName+":"+remoteServerPort+path).get();
-    }
 
-    private String flattenList(List<String> values) {
-        StringBuffer sb = new StringBuffer();
-        values.forEach(v -> sb.append(v + ", "));
-        String flattenedValue = sb.toString();
-        return flattenedValue.substring(0, flattenedValue.length() - 2);
-    }
+
 
 }
