@@ -1,6 +1,7 @@
 package com.prem.springcache.config;
 
 import com.prem.springcache.cache.CacheKeyRefMap;
+import com.prem.springcache.constant.AppConstant;
 import com.prem.springcache.service.ProxyService;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
@@ -22,7 +23,7 @@ import java.net.URISyntaxException;
 
 @Configuration
 @EnableScheduling
-public class AppConfig {
+public class AppConfig implements AppConstant {
 
 	@Autowired
 	ProxyService proxyService;
@@ -55,26 +56,22 @@ public class AppConfig {
 	@Bean
     CommandLineRunner runner(){
         return args -> {
-            logger.debug("Proxy servic is running ...");
+            logger.debug("Proxy service is running ...");
         };
     }
 
-	@Scheduled(fixedRate=(5*60*1000)) // 5 min
-	public void updateCache() {
-		logger.debug("Cache update - started");
-		logger.debug("Cache size: "+CacheKeyRefMap.getCacheEntrySet().size());
-		CacheKeyRefMap.getCacheEntrySet().parallelStream().forEach(es -> {
-		    logger.debug("Updating Cache Key: "+es.getKey());
-			try {
-				proxyService.updateCache(es.getValue());
-				logger.debug("Cache key ["+es.getKey()+"] updated successfully");
-			} catch (URISyntaxException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		});
-        logger.debug("Cache update - completed");
+	@Scheduled(fixedRate=(CACHE_REFRESH_FREQUENCY *60*1000)) // 5 min
+	public void updateAllCacheEntries() {
+        logger.info("cache refresh - started");
+	    proxyService.refreshAllCacheEntries();
+        logger.info("cache refresh - completed");
+	}
+
+	@Scheduled(fixedRate=(CACHE_EVICT_FREQUENCY*60*1000), initialDelay = CACHE_EVICT_INIT_DELAY *60*1000) // 30 min
+	public void removeAllCacheEntries() {
+        logger.info("cache eviction - started");
+		proxyService.clearAllCacheEntries();
+        logger.info("cache eviction - completed");
 	}
 
 }
