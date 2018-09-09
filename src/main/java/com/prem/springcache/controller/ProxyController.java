@@ -33,6 +33,7 @@ public class ProxyController {
                              HttpServletRequest request,
                              @RequestHeader HttpHeaders headers
     ) throws URISyntaxException, IOException {
+
         CacheKeyReference cacheKeyReference = new CacheKeyReference();
         cacheKeyReference.setRequestBody(body);
         cacheKeyReference.setHttpMethod(method.name());

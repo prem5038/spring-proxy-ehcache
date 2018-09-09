@@ -55,7 +55,7 @@ public class AppConfig {
 	@Bean
     CommandLineRunner runner(){
         return args -> {
-            logger.debug("CommandLineRunner running ...");
+            logger.debug("Proxy servic is running ...");
         };
     }
 
